@@ -1,3 +1,14 @@
+#ignore some project files
+*.mp4
+Test3DTargets/*
+Planning/*
+*/static/objects/*.obj
+*/static/objects/*.stl
+PCVisualizerApp/testApps/*
+
+UnityApps/*
+!UnityApps/VuforiaHololensSampleTest
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

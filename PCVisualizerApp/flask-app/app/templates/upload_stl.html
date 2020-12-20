@@ -1,0 +1,29 @@
+{% extends "base.html" %} {% block content %}
+
+<div class="container">
+    <div class="row">
+        <div class="col">
+
+            <h3>Upload a stl file</h3>
+            <hr>
+
+            <form action="/upload_stl" method="POST" enctype="multipart/form-data">
+
+                <div class="form-group">
+                    <label>Select stl file</label>
+                    <div class="custom-file">
+                        <input type="file" class="custom-file-input" name="stl" id="stl">
+                        <label class="custom-file-label" for="stl">Select stl file...</label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Upload</button>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}

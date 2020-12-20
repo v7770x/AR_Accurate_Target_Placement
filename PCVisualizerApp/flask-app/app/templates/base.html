@@ -1,0 +1,23 @@
+<html>
+
+
+<head>
+    {% if title %}
+    <title>{{ title }}</title>
+    {% else %}
+    <title>Display Model</title>
+    {% endif %}
+    <script type="text/javascript" src="{{ url_for('static', filename='js/three.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/STLLoader.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/OrbitControls.js') }}"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+</head>
+
+<body>
+    <div>Display Model: <a href="/index">Home</a></div>
+    <hr> {% block content %}{% endblock %}
+</body>
+
+</html>

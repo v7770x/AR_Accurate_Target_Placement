@@ -1,0 +1,129 @@
+{% extends "base.html" %} {% block content %}
+
+<script type="text/javascript" src="{{ url_for('static', filename='js/loadStl.js') }}"></script>
+<div class="container">
+    <div class="row">
+        <div class="col">
+
+            <h3>Upload files</h3>
+            <hr>
+
+            <form action="/upload_stl" method="POST" enctype="multipart/form-data">
+
+                <div class="form-group">
+                    <label>Select stl file</label>
+                    <div class="custom-file">
+                        <input type="file" class="custom-file-input" name="stl" id="stl">
+                        <label class="custom-file-label" for="stl">Select stl file...</label>
+                    </div>
+                    <label>Select obj file</label>
+                    <div class="custom-file">
+                        <input type="file" class="custom-file-input" name="obj" id="obj">
+                        <label class="custom-file-label" for="obj">Select obj file...</label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Upload</button>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+<div id="model" style="width: 100%; height: 500px"> </div>
+<div id="points-input">
+
+    <form class="form-inline" id="p1">
+        <div class="form-group">
+            <label for="x1">X1:</label><br>
+            <input type="text" id="x1" name="x1" value="0"><br>
+        </div>
+        <div class="form-group">
+            <label for="y1">Y1:</label><br>
+            <input type="text" id="y1" name="y1" value="0"><br>
+        </div>
+        <div class="form-group">
+            <label for="z1">Z1:</label><br>
+            <input type="text" id="z1" name="z1" value="0"><br>
+        </div>
+    </form>
+
+    <form class="form-inline" id="p2">
+        <div class="form-group">
+            <label for="x2">X2:</label><br>
+            <input type="text" id="x2" name="x2" value="0"><br>
+        </div>
+        <div class="form-group">
+            <label for="y2">Y2:</label><br>
+            <input type="text" id="y2" name="y2" value="0"><br>
+        </div>
+        <div class="form-group">
+            <label for="z2">Z2:</label><br>
+            <input type="text" id="z2" name="z2" value="0"><br>
+        </div>
+    </form>
+
+    <form class="form-inline" id="p3">
+        <div class="form-group">
+            <label for="x3">X3:</label><br>
+            <input type="text" id="x3" name="x3" value="0"><br>
+        </div>
+        <div class="form-group">
+            <label for="y3">Y3:</label><br>
+            <input type="text" id="y3" name="y3" value="0"><br>
+        </div>
+        <div class="form-group">
+            <label for="z3">Z3:</label><br>
+            <input type="text" id="z3" name="z3" value="0"><br>
+        </div>
+    </form>
+
+    <button type="button" class="btn btn-primary" id="add-points-button">Add Points</button>
+
+</div>
+<script>
+</script>
+
+<script type="text/javascript">
+    console.log("helo")
+
+    function mapInputsToDouble(pt) {
+        let mappedPt = [];
+        for (let i = 0; i < pt.length; i++) {
+            mappedPt.push(parseFloat(pt[i].value));
+        }
+        return mappedPt;
+    }
+    $("#add-points-button").on("click", function() {
+        clearPoints();
+        let ptsList = [];
+        for (let i = 1; i <= 3; i++) {
+            let pi = mapInputsToDouble($(`#p${i} :input`));
+            console.log(pi)
+            ptsList.push(pi);
+            addPoint(pi);
+        }
+        console.log(JSON.stringify(ptsList))
+        $.ajax({
+            type: "POST",
+            url: "/update_points",
+            contentType: "application/json",
+            data: JSON.stringify({
+                "points": ptsList
+            })
+        }).done(function(resp) {
+            console.log(resp);
+        });
+    });
+
+    window.onload = function() {
+        let objName = "{{curr_stl_name}}";
+        console.log(objName)
+        STLViewer("{{ url_for('static', filename='objects/objName') }}".replace("objName", objName), "model")
+        addPoint([0, 0, 0]);
+
+    }
+</script>
+
+
+{% endblock %}

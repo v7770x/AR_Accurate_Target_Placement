@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<QCARConfig>
+<Tracking>
+<ModelTarget name="GTHololens" motionHint="static" trackingMode="default"/>
+
+</Tracking>
+
+<Assembly name="GTHololenss_assembly" assemblyId="b526ffb28ebb4f5da87c95db8400c751">
+<Part name="GTHololens" translation="0 0 0" rotation="AD: 0 0 1 0"/>
+<EntryPoint name="viewpoint_0000" translation="-0.0108707 0.047799 0.785804" rotation="AD: 0.7850269913358784 3.1507385223208737 0.8668004337717277 99.3334" trained="no">
+
+</EntryPoint>
+<EntryPoint name="viewpoint_0001" translation="-0.0106396 0.0442612 0.790243" rotation="AD: 0.9944801812364477 0.7881789174074969 0.34757019191066185 60.5193" trained="no">
+
+</EntryPoint>
+<EntryPoint name="viewpoint_0002" translation="0.00906188 0.0481129 0.785889" rotation="AD: 0.9389586784268448 -1.608991747046959 -0.6512289748239347 80.7741" trained="no">
+
+</EntryPoint>
+<EntryPoint name="viewpoint_0003" translation="-0.00442221 0.0600528 0.752671" rotation="AD: 0.999999999609964 -0.047406426130363215 -0.005301344971250128 12.7759" trained="no">
+
+</EntryPoint>
+
+</Assembly>
+
+</QCARConfig>
