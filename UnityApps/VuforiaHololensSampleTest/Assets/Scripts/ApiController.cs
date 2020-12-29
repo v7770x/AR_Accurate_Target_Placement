@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 using System.Net.Http;
 using System.Threading.Tasks;
 using UnityEngine.Networking;
+using MathNet.Numerics.Distributions;
 
 public class JsonHelper
 {
@@ -32,46 +33,11 @@ public class ApiController : MonoBehaviour
         public double[,] points;
     }
 
-    public static string API_URL = "http://192.168.2.101:5000";
-
     public static string GetFullEndpoint(string endpoint)
     {
-        return "http://" + ImageTargetHandler.ipAddressText + ":5000/" +endpoint;
+        return "http://" + ImageTargetHandler.storageData.ipAddress + ":5000/" +endpoint;
     }
 
-    public static double[,] GetModelPoints()
-    {
-        //call api
-        string endpoint = GetFullEndpoint("get_points");
-        HttpWebRequest request = (HttpWebRequest)WebRequest.Create(endpoint);
-        HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-        StreamReader reader = new StreamReader(response.GetResponseStream());
-
-        //covert data to double array
-        string jsonResponse = reader.ReadToEnd();
-        print(jsonResponse);
-        double[] jsonPoints = JsonHelper.getJsonArray<double>(jsonResponse);
-        //PointsData modelPoints = JsonConvert.DeserializeObject<PointsData>(jsonResponse);
-        double[,] spacePoints = new double[ImageTargetHandler.NUM_TARGETS, 3];
-        for(int i = 0; i< ImageTargetHandler.NUM_TARGETS; i++)
-        {
-            int start_ind = i * 3;
-            spacePoints[i, 0] = jsonPoints[start_ind];
-            spacePoints[i, 1] = jsonPoints[start_ind + 1];
-            spacePoints[i, 2] = jsonPoints[start_ind + 2];
-        }
-
-        return spacePoints;
-
-        //convert to m assuming in mm
-        /*for(int i=0; i < modelPoints.points.GetLength(0); i++)
-        {
-            for (int j = 0; j < modelPoints.points.GetLength(1); j++) {
-                modelPoints.points[i, j] /= 1000; //assuming given in mm
-            }
-        }
-        return modelPoints;*/
-    }
 
     public static IEnumerator GetModelPointsAsync(Action<double[,]> onSuccess)
     {
@@ -109,26 +75,6 @@ public class ApiController : MonoBehaviour
     }
 
 
-    public static void SetModelObject(GameObject objHolder)
-    {
-
-        //get object from endpoint, and save in persistent data path
-        string endpoint = API_URL + "/get_uploaded_obj";
-        print(endpoint);
-        WebClient client = new WebClient();
-        print(Application.persistentDataPath);
-        client.DownloadFile(endpoint, Application.persistentDataPath + "/object.obj");
-
-        //load model
-        Mesh holderMesh = new Mesh();
-        ObjImporter newMesh = new ObjImporter();
-        holderMesh = newMesh.ImportFile(Application.persistentDataPath + "/object.obj");
-
-        //set mesh filter object to loaded model
-        MeshFilter filter = objHolder.GetComponent<MeshFilter>();
-        filter.mesh = holderMesh;
-    }
-
     public static IEnumerator SetModelObjectAsync(GameObject objHolder)
     {
         string endpoint = GetFullEndpoint("get_uploaded_obj");
@@ -155,10 +101,18 @@ public class ApiController : MonoBehaviour
         }
     }
 
-    static string serializeDoubleArrayToJson(double[,] matrix)
+    static string serializeDoubleArrayToJson(double[,] matrix, string name, bool openBracket, bool closeBracket)
     {
-
-        string output = "{\"spacePoints\":[";
+        string output = "";
+        if (openBracket)
+        {
+            output += "{";
+        }
+        else
+        {
+            output += ",";
+        }
+        output += "\"" + name + "\":[";
         for (int i = 0; i < matrix.GetLength(0); i++)
         {
             output += "[";
@@ -173,18 +127,22 @@ public class ApiController : MonoBehaviour
             else
                 output += "]";
         }
-        output += "]}";
+        output += "]";
+        if (closeBracket)
+        {
+            output += "}";
+        }
         print("serialized double array: " + output);
         return output;
     }
 
-    public static IEnumerator RunOptimizationAsync(Action<List<double[,]>> onSuccess, double[,] spacePoints)
+    public static IEnumerator RunOptimizationAsync(Action<List<double[,]>> onSuccess, double[,] spacePoints, double [,] normalVectors)
     {
         //call api
         string endpoint = GetFullEndpoint("run_optimization");
         using (UnityWebRequest uwr = new UnityWebRequest(endpoint, "POST"))
         {
-            string json = serializeDoubleArrayToJson(spacePoints);
+            string json = serializeDoubleArrayToJson(spacePoints, "spacePoints", true, false) + serializeDoubleArrayToJson(normalVectors, "normalVectors", false, true);
             byte[] jsonToSend = new System.Text.UTF8Encoding().GetBytes(json);
             uwr.uploadHandler = (UploadHandler)new UploadHandlerRaw(jsonToSend);
             uwr.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
