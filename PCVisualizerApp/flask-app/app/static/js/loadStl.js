@@ -81,11 +81,12 @@ function STLViewer(model, elementID) {
 
 }
 
-function addPoint(pt) {
+function addPoint(pt, ptColor=0xFF0000) {
+    console.log(ptColor)
     console.log("adding point");
     var geometry = new THREE.SphereGeometry(largestDimension / 30, 32, 32);
     var material = new THREE.MeshPhongMaterial({
-        color: 0xFF0000
+        color: ptColor
     });
     var sphere = new THREE.Mesh(geometry, material);
     sphere.position.set(pt[0], pt[1], pt[2]);
