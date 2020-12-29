@@ -6,6 +6,9 @@ using System.ComponentModel;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.IO;
+using TMPro;
 
 public class ImageTargetHandler : MonoBehaviour
 {
@@ -40,31 +43,83 @@ public class ImageTargetHandler : MonoBehaviour
     public GameObject IPButton; 
     public GameObject ResetButton;
     public GameObject OptimizeButton;
+    public GameObject ChangeIPButton;
+    public GameObject ShowVectorsButton;
+    public GameObject UpdateModelButton;
 
     //keyboard input
     TouchScreenKeyboard keyboard;
     public static string ipAddressText = "192.168.0.119";
 
+    //data in persistent storage
+    [System.Serializable]
+    public class StorageData
+    {
+        public string ipAddress;
+    }
 
+    public static StorageData storageData = new StorageData();
+    string STORAGE_DATA_PATH;
+
+    void updateIpAddressText(string ipAddress)
+    {
+        ip_text.GetComponent<TextMeshPro>().text = "IP address: " + ipAddress;
+    }
 
     private void Update()
     {
         if (TouchScreenKeyboard.visible == false && keyboard != null)
         {
-            ip_text.GetComponent<Text>().text = "IP Input: " + keyboard.text + "";
+            updateIpAddressText(keyboard.text);
             if (keyboard.status == TouchScreenKeyboard.Status.Done)
             {
                 if (keyboard.text != "")
                 {
-                    ipAddressText = keyboard.text;
+                    storageData.ipAddress = keyboard.text;
+                    updateIpAddressText(storageData.ipAddress);
                 }
-                ip_text.GetComponent<Text>().text = "IP set to: " + ipAddressText;
+                
                 keyboard = null;
+                updateStoredData();
                 UpdateModel();
             }
         }
 
 
+    }
+
+    void updateStoredData()
+    {
+        print(STORAGE_DATA_PATH);
+        string jsonText = JsonUtility.ToJson(storageData);
+        using (StreamWriter sw = new StreamWriter(STORAGE_DATA_PATH, false))
+        {
+            sw.WriteLine(jsonText);
+        }
+    }
+
+    bool loadStoredData()
+    {
+        try
+        {
+            using (StreamReader sr = new StreamReader(STORAGE_DATA_PATH))
+            {
+                string jsonText = "";
+
+                string line;
+                while ((line = sr.ReadLine()) != null)
+                {
+                    jsonText += line;
+                }
+                storageData = JsonUtility.FromJson<StorageData>(jsonText);
+            }
+            print(storageData);
+            return true;
+        }catch{
+            print("no stored data found");
+            return false;
+        }
+        
     }
 
 
@@ -73,6 +128,7 @@ public class ImageTargetHandler : MonoBehaviour
     /// </summary>
     public void Awake()
     {
+        STORAGE_DATA_PATH = Application.persistentDataPath + "/storageData.json";
         for (int i = 0; i < NUM_TARGETS; i++)
         {
             // set the event handlers and callback functions
@@ -89,16 +145,21 @@ public class ImageTargetHandler : MonoBehaviour
         IPButton.GetComponent<Interactable>().OnClick.AddListener(HandleIPButtonClick);
         ResetButton.GetComponent<Interactable>().OnClick.AddListener(HandleResetButtonClick);
         OptimizeButton.GetComponent<Interactable>().OnClick.AddListener(HandleOptimizeButtonClick);
-        //printMatrix(ApiController.GetModelPoints().points, "space points");
+        ChangeIPButton.GetComponent<Interactable>().OnClick.AddListener(HandleIPButtonClick);
+        ShowVectorsButton.GetComponent<Interactable>().OnClick.AddListener(HandleShowVectorsClick);
+        UpdateModelButton.GetComponent<Interactable>().OnClick.AddListener(UpdateModel);
 
-        //double[,] pointsFromAPI = new double[NUM_TARGETS, 3] { { 0.25, 0.25, 0 }, { 0.25, -0.25, 0 }, { -0.25, 0.25, 0 } };
-        //DisplayDistances(pointsFromAPI);
-        //print("image target handler awake");
-        //ApplyTransform(pointsFromAPI);
-        HandleIPButtonClick();
-        //StartCoroutine(ApiController.GetModelPointsAsync(HandleModelPoints));
-        UpdateModel();
-        //HandleOptimizeButtonClick();
+        //printMatrix(ApiController.GetModelPoints().points, "space points");
+        if (!loadStoredData())
+        {
+            HandleIPButtonClick();
+        }
+        else
+        {
+            updateIpAddressText(storageData.ipAddress);
+            UpdateModel();
+        }
+        
 
 
     }
@@ -117,6 +178,9 @@ public class ImageTargetHandler : MonoBehaviour
         IPButton.GetComponent<Interactable>().OnClick.RemoveListener(HandleIPButtonClick);
         ResetButton.GetComponent<Interactable>().OnClick.RemoveListener(HandleResetButtonClick);
         OptimizeButton.GetComponent<Interactable>().OnClick.RemoveListener(HandleOptimizeButtonClick);
+        ChangeIPButton.GetComponent<Interactable>().OnClick.RemoveListener(HandleIPButtonClick);
+        ShowVectorsButton.GetComponent<Interactable>().OnClick.RemoveListener(HandleShowVectorsClick);
+        UpdateModelButton.GetComponent<Interactable>().OnClick.RemoveListener(UpdateModel);
     }
 
     public void HandleResetButtonClick()
@@ -144,10 +208,15 @@ public class ImageTargetHandler : MonoBehaviour
 
     public void HandleOptimizeButtonClick()
     {
+        //extract points and normal vectors
         double[,] spacePoints;
+        double[,] normalVectors;
         spacePoints = ExtractPointsFromTransforms(targetTransforms);
+        normalVectors = ExtractVectorsFromTransforms(targetTransforms);
         //spacePoints = new double[NUM_TARGETS, 3] { { -0.6659, -0.5421, -0.7766 }, { -0.2835, -0.5464, -0.5027 }, { -0.3628, -0.5376, -1.1833 } };
-        StartCoroutine(ApiController.RunOptimizationAsync(OptimizationOnSuccess, spacePoints));
+
+        //call api to optimize
+        StartCoroutine(ApiController.RunOptimizationAsync(OptimizationOnSuccess, spacePoints, normalVectors));
         print("Optimize button clicked");
         optimize_text.GetComponent<Text>().text = "Optimizing...";
         if (numTargetsFound!= NUM_TARGETS)
@@ -157,6 +226,24 @@ public class ImageTargetHandler : MonoBehaviour
         else
         {
 
+        }
+    }
+
+    public void HandleShowVectorsClick()
+    {
+        if (numTargetsFound == NUM_TARGETS)
+        {
+            print("Up Vectors: ");
+            for (int i = 0; i < NUM_TARGETS; i++)
+            {
+                print(targetTransforms[i].up * 1000);
+                GameObject targetText = targetObjects[i].transform.Find("NormText").gameObject;
+                targetText.GetComponent<TextMeshPro>().text = "(" + targetTransforms[i].up[0] * 1000 + ", "
+                        + targetTransforms[i].up[1] * 1000 + ", " + targetTransforms[i].up[2] * 1000 + ")";
+                targetText.SetActive(true);
+                GameObject targetSys = targetObjects[i].transform.Find("CoordSys").gameObject;
+                targetSys.SetActive(true);
+            }
         }
     }
 
@@ -203,6 +290,8 @@ public class ImageTargetHandler : MonoBehaviour
                 //ApiController.PointsData modelPoints =  ApiController.GetModelPoints();
                 //double[,] pointsFromAPI = new double[NUM_TARGETS, 3] { { 0.25, 0.25, 0 }, { 0.25, -0.25, 0 }, { -0.25, 0.25, 0 } };
                 ApplyTransform(ModelPoints);
+                //HandleShowVectorsClick();
+                //HandleOptimizeButtonClick();
 
             }
         }
@@ -210,6 +299,8 @@ public class ImageTargetHandler : MonoBehaviour
        
 
     }
+
+
 
 
     /// <summary>
@@ -267,6 +358,19 @@ public class ImageTargetHandler : MonoBehaviour
         }
         return spacePoints;
     }
+
+    private double[,] ExtractVectorsFromTransforms(Transform[] transformArray)
+    {
+        double[,] normalVectors = new double[transformArray.Length, 3];
+        for (int i = 0; i < transformArray.Length; i++)
+        {
+            normalVectors[i, 0] = transformArray[i].up.x;
+            normalVectors[i, 1] = transformArray[i].up.y;
+            normalVectors[i, 2] = transformArray[i].up.z;
+        }
+        return normalVectors;
+    }
+    
 
     private double[,] ExtractPointsFromGameObjects(GameObject[] objectArray)
     {
