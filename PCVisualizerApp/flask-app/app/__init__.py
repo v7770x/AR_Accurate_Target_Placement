@@ -5,3 +5,4 @@ app = Flask(__name__)
 CORS(app)
 
 from app import routes
+from app import data_logger

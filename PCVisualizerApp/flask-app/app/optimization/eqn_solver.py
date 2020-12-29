@@ -38,7 +38,7 @@ def get_angle(v1, v2):
  Given set of points in list, find distances and angles between points
  returns in format [d12, d13, ... d1n, d23, d24, ...d2n ... dn-1n, th123, th132]
 '''
-def extract_target_vals(points):
+def extract_target_vals(points, get_separate_return_vals=False):
     #extract properties of points
     n = len(points)
     points = np.array(points)
@@ -53,6 +53,8 @@ def extract_target_vals(points):
     target_vals.append(get_angle(points[0] - points[2], points[1] - points[2]))
     target_vals.append(get_angle(points[2] - points[1], points[0] - points[1]))
 
+    if(get_separate_return_vals):
+        return (target_vals[0:3], target_vals[3:])
     return np.array(target_vals)
 
 
