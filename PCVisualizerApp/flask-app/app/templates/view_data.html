@@ -5,11 +5,28 @@
 
     </table>
 </div>
+<div class = "container-fluid">
+    <form class="form-inline" id="calculate-form">
+        <div class="form-group">
+            <label for="index-input">Index:</label><br>
+            <input type="text" id="index-input" name="index-input" value="1"><br>
+        </div>
+    </form>
+    <button type="button" class="btn btn-primary" id="calculate-button">Calculate</button>
+</div>
+
+<div class = "container-fluid">
+    <div class="form-group">
+        <label for="calculateOutput">Output</label>
+        <textarea class="form-control" id="calculateOutput" rows="3"></textarea>
+    </div>
+</div>
 <script>
     var viewable_data = {{viewable_data | tojson}};
-    viewable_data.reverse();
+    
     // Builds the HTML Table out of myList.
     function buildHtmlTable(selector, myList) {
+        viewable_data.reverse();
         console.log(myList[0])
         var columns = addAllColumnHeaders(myList, selector);
 
@@ -22,6 +39,7 @@
             }
             $(selector).append(row$);
         }
+        viewable_data.reverse();
 
     }
 
@@ -64,6 +82,34 @@
                 ]
             }
         );
+
+        function find_angle(v1, v2){
+            console.log("Manual:" + v1.map((elem, i)=>{return(elem*v2[i])}).reduce((a,b)=>a+b,0));
+            console.log("Library:" + math.dot(v1, v2))
+            //console.log(math.dot(v1, v2)/(math.norm(v1) * math.norm(v2)));
+            //console.log(v1.map(elem=>elem.toFixed(1)))
+            //console.log(v1.map(elem=>Math.round(elem*100)/100))
+            
+            //let output =  Math.acos( math.dot(v1.map(elem=>Math.round(elem*1000)/1000), v2.map(elem=>Math.round(elem*1000)/1000))/(math.norm(v1) * math.norm(v2))) *180/math.pi;
+            let output =  Math.acos( math.dot(v1, v2)/(math.norm(v1) * math.norm(v2))) *180/math.pi;
+            console.log(output)
+            if( isNaN(output)){
+                return 0
+                
+            }else{
+               return output; 
+            }
+        }
+
+         $("#calculate-button").on("click", function() {
+            let index = parseInt($("#index-input").val()) - 1;
+            let normal_vectors_string = viewable_data[index]["6_Normal_Vectors"].replace(/[\]\n]/g,"").split("[");
+            let normal_vectors = normal_vectors_string.filter(elem=>elem!="").map(p=>p.split(" ").filter(elem=>elem!="").map(elem=>parseFloat(elem)) );
+            $("textarea#calculateOutput").val("Angle 1 to 2: " + find_angle(normal_vectors[0], normal_vectors[1]) 
+                                            +" deg \n Angle 1 to 3: " + find_angle(normal_vectors[0], normal_vectors[2]) 
+                                            +" deg \n Angle 2 to 3: " + find_angle(normal_vectors[1], normal_vectors[2]) +" deg");
+                                            
+        });
        
         
     });
