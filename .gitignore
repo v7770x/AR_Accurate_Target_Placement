@@ -5,6 +5,8 @@ Planning/*
 */static/objects/*.obj
 */static/objects/*.stl
 PCVisualizerApp/testApps/*
+Papers/*
+*.zip
 
 UnityApps/*
 !UnityApps/VuforiaHololensSampleTest

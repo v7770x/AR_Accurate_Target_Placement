@@ -9,6 +9,10 @@ using UnityEngine.UI;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.IO;
 using TMPro;
+using MathNet.Numerics.LinearAlgebra.Complex;
+using System.Linq;
+using MathNet.Numerics.LinearAlgebra;
+using MathNet.Numerics.LinearAlgebra.Double;
 
 public class ImageTargetHandler : MonoBehaviour
 {
@@ -38,6 +42,7 @@ public class ImageTargetHandler : MonoBehaviour
     public GameObject objHolder;
 
     double[,] ModelPoints;
+    double[,] ModelVectors;
 
     //buttons
     public GameObject IPButton; 
@@ -46,6 +51,8 @@ public class ImageTargetHandler : MonoBehaviour
     public GameObject ChangeIPButton;
     public GameObject ShowVectorsButton;
     public GameObject UpdateModelButton;
+    public GameObject ProjectModelPCAButton;
+    public GameObject ProjectModelNormalButton;
 
     //keyboard input
     TouchScreenKeyboard keyboard;
@@ -148,6 +155,8 @@ public class ImageTargetHandler : MonoBehaviour
         ChangeIPButton.GetComponent<Interactable>().OnClick.AddListener(HandleIPButtonClick);
         ShowVectorsButton.GetComponent<Interactable>().OnClick.AddListener(HandleShowVectorsClick);
         UpdateModelButton.GetComponent<Interactable>().OnClick.AddListener(UpdateModel);
+        ProjectModelPCAButton.GetComponent<Interactable>().OnClick.AddListener(HandleProjectPCAClick);
+        ProjectModelNormalButton.GetComponent<Interactable>().OnClick.AddListener(HandleProjectNormalClick);
 
         //printMatrix(ApiController.GetModelPoints().points, "space points");
         if (!loadStoredData())
@@ -181,6 +190,8 @@ public class ImageTargetHandler : MonoBehaviour
         ChangeIPButton.GetComponent<Interactable>().OnClick.RemoveListener(HandleIPButtonClick);
         ShowVectorsButton.GetComponent<Interactable>().OnClick.RemoveListener(HandleShowVectorsClick);
         UpdateModelButton.GetComponent<Interactable>().OnClick.RemoveListener(UpdateModel);
+        ProjectModelPCAButton.GetComponent<Interactable>().OnClick.RemoveListener(HandleProjectPCAClick);
+        ProjectModelNormalButton.GetComponent<Interactable>().OnClick.RemoveListener(HandleProjectNormalClick);
     }
 
     public void HandleResetButtonClick()
@@ -285,18 +296,142 @@ public class ImageTargetHandler : MonoBehaviour
             MeshRenderer meshRenderer = sphere.GetComponent<MeshRenderer>();
             meshRenderer.material = Resources.Load<Material>("red");
 
-            if (numTargetsFound == NUM_TARGETS)
-            {
-                //ApiController.PointsData modelPoints =  ApiController.GetModelPoints();
-                //double[,] pointsFromAPI = new double[NUM_TARGETS, 3] { { 0.25, 0.25, 0 }, { 0.25, -0.25, 0 }, { -0.25, 0.25, 0 } };
-                ApplyTransform(ModelPoints);
-                //HandleShowVectorsClick();
-                //HandleOptimizeButtonClick();
+            HandleProjectNormalClick();
 
-            }
+
+
         }
 
        
+
+    }
+
+    /// <summary>
+    /// event handler to trigger projection of the object using the PCA method
+    /// </summary>
+    public void HandleProjectPCAClick()
+    {
+        if (numTargetsFound == NUM_TARGETS)
+        {
+            ApplyTransformPCA(ModelPoints);
+
+        }
+    }
+
+    public void HandleProjectNormalClick()
+    {
+        if (numTargetsFound == NUM_TARGETS)
+        {
+            ApplyTransformNormal(ModelVectors, ModelPoints);
+
+        }
+    }
+
+    private void ApplyTransformNormal(double [,] modelVectors, double[,] modelPoints)
+    {
+        print("APPLYING Normal TRANSFORM");
+        
+        double[,] spacePoints = ExtractPointsFromTransforms(targetTransforms);
+        double[,] spaceVectors = ExtractVectorsFromTransforms(targetTransforms);
+
+        //testing:
+        modelVectors = new double[,] { { 0, 0, 1 }, { 1, 0, 1 }, { 1, 1, 1 } };
+        spaceVectors = new double[,] { { 1, 0, 0 }, { 3, 0, 1 }, { 3, 4, 1 } };
+
+        Vector3[] modelVector3s = new Vector3[NUM_TARGETS];
+        Vector3[] spaceVector3s = new Vector3[NUM_TARGETS];
+
+        printMatrix(modelVectors, "model vectors");
+        //printMatrix(modelPoints, "model points");
+        printMatrix(spaceVectors, "space vectors");
+        //printMatrix(spacePoints, "space points");
+        for (int i = 0; i<NUM_TARGETS; i++)
+        {
+            modelVector3s[i].x = (float)modelVectors[i, 0];
+            modelVector3s[i].y = (float)modelVectors[i, 1];
+            modelVector3s[i].z = (float)modelVectors[i, 2];
+
+            spaceVector3s[i].x = (float)spaceVectors[i, 0];
+            spaceVector3s[i].y = (float)spaceVectors[i, 1];
+            spaceVector3s[i].z = (float)spaceVectors[i, 2];
+        }
+        print(modelVector3s[2]);
+
+        //calculate the cross product of the model vectors of interest
+        Vector3 modelCross1;
+        int crossIndex;
+        if(Vector3.Angle(modelVector3s[0], modelVector3s[1]) > 10.0f)
+        {
+            modelCross1 = Vector3.Cross(modelVector3s[0], modelVector3s[1]).normalized;
+            crossIndex = 1;
+        }
+        else
+        {
+            modelCross1 = Vector3.Cross(modelVector3s[1], modelVector3s[2]).normalized;
+            crossIndex = 2;
+        }
+        Vector3 modelCross2 = Vector3.Cross(modelVector3s[0], modelCross1).normalized;
+
+        //calculate the cross product of the space vectors of interest
+        Vector3 spaceCross1 = Vector3.Cross(spaceVector3s[0], spaceVector3s[crossIndex]).normalized;
+        Vector3 spaceCross2 = Vector3.Cross(spaceVector3s[0], spaceCross1).normalized;
+        print("space Cross 1: [" + spaceCross1.x + "," + spaceCross1.y + ", " + spaceCross1.z + "]");
+        print("space Cross 2: [" + spaceCross2.x + "," + spaceCross2.y + ", " + spaceCross2.z + "]");
+
+
+        //find rotation and translation
+        //Quaternion quaternion = Quaternion.FromToRotation(modelCross1, spaceCross1);
+        double [,] combinedModelMatrix = new double[NUM_TARGETS, 3];
+        double[,] combinedSpaceMatrix = new double[NUM_TARGETS, 3];
+
+        //model matrix
+        combinedModelMatrix[0, 0] = modelVector3s[0].x;
+        combinedModelMatrix[0, 1] = modelVector3s[0].y;
+        combinedModelMatrix[0, 2] = modelVector3s[0].z;
+
+        combinedModelMatrix[1, 0] = modelCross1.x;
+        combinedModelMatrix[1, 1] = modelCross1.y;
+        combinedModelMatrix[1, 2] = modelCross1.z;
+
+        combinedModelMatrix[2, 0] = modelCross2.x;
+        combinedModelMatrix[2, 1] = modelCross2.y;
+        combinedModelMatrix[2, 2] = modelCross2.z;
+
+        //space matrix
+        combinedSpaceMatrix[0, 0] = spaceVector3s[0].x;
+        combinedSpaceMatrix[0, 1] = spaceVector3s[0].y;
+        combinedSpaceMatrix[0, 2] = spaceVector3s[0].z;
+
+        combinedSpaceMatrix[1, 0] = spaceCross1.x;
+        combinedSpaceMatrix[1, 1] = spaceCross1.y;
+        combinedSpaceMatrix[1, 2] = spaceCross1.z;
+
+        combinedSpaceMatrix[2, 0] = spaceCross2.x;
+        combinedSpaceMatrix[2, 1] = spaceCross2.y;
+        combinedSpaceMatrix[2, 2] = spaceCross2.z;
+
+        printMatrix(combinedSpaceMatrix, "combinedModelMatrix");
+        printMatrix(combinedSpaceMatrix, "combinedSpaceMatrix");
+        //calculate rotation matrix
+        double[,] rotationMatrix = ( Matrix<double>.Build.DenseOfArray(combinedModelMatrix).Multiply(Matrix<double>.Build.DenseOfArray(combinedSpaceMatrix).Transpose()) ).ToArray();
+        printMatrix(rotationMatrix, "rotationMatrix");
+
+        Vector3 translation = new Vector3((float)(spacePoints[0,0] - modelPoints[0,0]) , (float)(spacePoints[0, 1] - modelPoints[0, 1]),
+            (float)(spacePoints[0, 2] - modelPoints[0, 2]));
+
+        print("model cross " + modelCross1);
+        print("space cross " + spaceCross1);
+
+        //apply transformation
+        ProjectionObject.SetActive(true);
+
+        ProjectionObject.transform.rotation = QuaternionFromMatrix(rotationMatrix);
+        ProjectionObject.transform.transform.position = translation;
+        //ProjectionObject.transform.Translate(translation);
+
+
+
+
 
     }
 
@@ -308,7 +443,7 @@ public class ImageTargetHandler : MonoBehaviour
     /// Then apply the transformation to the 3D model
     /// </summary>
     /// <param name="modelPoints"></param>
-    private void ApplyTransform(double [,] modelPoints) 
+    private void ApplyTransformPCA(double [,] modelPoints) 
     {
         //extract the points in real space from the transform components saved
         double[,] spacePoints;
@@ -324,7 +459,6 @@ public class ImageTargetHandler : MonoBehaviour
         transformation.CalcTransform(transformation.actualsMatrix, transformation.nominalsMatrix);
 
         //FitPoints3D fitPoints = FitPoints3D.Fit(new List<Point> { }, new List<Point);
-
         printMatrix(transformation.TransformMatrix, "Transform");
         printMatrix(transformation.RotationMatrix, "Rotation");
         printMatrix(transformation.TranslationMatrix, "Translation");
@@ -468,10 +602,18 @@ public class ImageTargetHandler : MonoBehaviour
         }
     }
 
+    public void HandleModelVectors(double[,] modelVectors)
+    {
+        print("Model vectors received");
+        ModelVectors = modelVectors;
+        printMatrix(modelVectors, "Model Vectors");
+    }
+
     private void UpdateModel()
     {
         StartCoroutine(ApiController.SetModelObjectAsync(objHolder));
         StartCoroutine(ApiController.GetModelPointsAsync(HandleModelPoints));
+        StartCoroutine(ApiController.GetModelVectorsAsync(HandleModelVectors));
 
     }
 

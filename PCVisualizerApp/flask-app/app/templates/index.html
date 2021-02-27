@@ -87,17 +87,72 @@
 
         </div>
     </div>
+    <div class="row">
+        <div id="vectors-input">
+
+            <form class="form-inline" id="v1">
+                <img src="{{ url_for('static', filename='images/TargetSi_1.png') }}" alt="image_si" class="img-thumbnail" width="40px" style="border:1px solid #FC2503;">
+                <div class="form-group">
+                    <label for="vx1">vx1:</label><br>
+                    <input type="text" id="vx1" name="vx1" value="0"><br>
+                </div>
+                <div class="form-group">
+                    <label for="vy1">vY1:</label><br>
+                    <input type="text" id="vy1" name="vy1" value="0"><br>
+                </div>
+                <div class="form-group">
+                    <label for="vz1">vZ1:</label><br>
+                    <input type="text" id="vz1" name="vz1" value="0"><br>
+                </div>
+            </form>
+
+            <form class="form-inline" id="v2">
+                <img src="{{ url_for('static', filename='images/TargetC_2.png') }}" alt="image_si" class="img-thumbnail" width="40px" style="border:1px solid #035AFC;">
+                <div class="form-group">
+                    <label for="vx2">vX2:</label><br>
+                    <input type="text" id="vx2" name="vx2" value="0"><br>
+                </div>
+                <div class="form-group">
+                    <label for="vy2">vY2:</label><br>
+                    <input type="text" id="vy2" name="vy2" value="0"><br>
+                </div>
+                <div class="form-group">
+                    <label for="vz2">vZ2:</label><br>
+                    <input type="text" id="vz2" name="vz2" value="0"><br>
+                </div>
+            </form>
+
+            <form class="form-inline" id="v3">
+                <img src="{{ url_for('static', filename='images/TargetRh_3.png') }}" alt="image_si" class="img-thumbnail" width="40px" style="border:1px solid #1E9900;">
+                <div class="form-group">
+                    <label for="vx3">vX3:</label><br>
+                    <input type="text" id="vx3" name="vx3" value="0"><br>
+                </div>
+                <div class="form-group">
+                    <label for="vy3">vY3:</label><br>
+                    <input type="text" id="vy3" name="vy3" value="0"><br>
+                </div>
+                <div class="form-group">
+                    <label for="vz3">vZ3:</label><br>
+                    <input type="text" id="vz3" name="vz3" value="0"><br>
+                </div>
+            </form>
+
+            <button type="button" class="btn btn-primary" id="add-vectors-button">Add Vectors</button>
+
+        </div>
+    </div>
 </div>
 
 <script type="text/javascript">
     console.log("helo")
 
-    function mapInputsToDouble(pt) {
-        let mappedPt = [];
-        for (let i = 0; i < pt.length; i++) {
-            mappedPt.push(parseFloat(pt[i].value));
+    function mapInputsToDouble(inputContainers) {
+        let mappedInputContainers = [];
+        for (let i = 0; i < inputContainers.length; i++) {
+            mappedInputContainers.push(parseFloat(inputContainers[i].value));
         }
-        return mappedPt;
+        return mappedInputContainers;
     }
     $("#add-points-button").on("click", function() {
         clearPoints();
@@ -116,6 +171,26 @@
             contentType: "application/json",
             data: JSON.stringify({
                 "points": ptsList
+            })
+        }).done(function(resp) {
+            console.log(resp);
+        });
+    });
+
+    $("#add-vectors-button").on("click", function() {
+        let vectorsList = [];
+        for (let i = 1; i <= 3; i++) {
+            let pi = mapInputsToDouble($(`#v${i} :input`));
+            console.log(pi)
+            vectorsList.push(pi);
+        }
+        console.log("Vectors" + JSON.stringify(vectorsList))
+        $.ajax({
+            type: "POST",
+            url: "/update_vectors",
+            contentType: "application/json",
+            data: JSON.stringify({
+                "vectors": vectorsList
             })
         }).done(function(resp) {
             console.log(resp);

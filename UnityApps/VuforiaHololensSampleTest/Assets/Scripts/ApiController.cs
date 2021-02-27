@@ -58,6 +58,9 @@ public class ApiController : MonoBehaviour
                 byte[] result = req.downloadHandler.data;
                 string jsonResponse = System.Text.Encoding.Default.GetString(result);
                 print("json Response: " + jsonResponse);
+
+                double[,] modelPoints = deserializeJsonDoubleArray(jsonResponse);
+                /*
                 double[] jsonPoints = JsonHelper.getJsonArray<double>(jsonResponse);
                 double[,] modelPoints = new double[ImageTargetHandler.NUM_TARGETS, 3];
                 for (int i = 0; i < ImageTargetHandler.NUM_TARGETS; i++)
@@ -67,8 +70,36 @@ public class ApiController : MonoBehaviour
                     modelPoints[i, 1] = jsonPoints[start_ind + 1];
                     modelPoints[i, 2] = jsonPoints[start_ind + 2];
                 }
+                */
 
                 onSuccess(modelPoints);
+            }
+
+        }
+    }
+
+    public static IEnumerator GetModelVectorsAsync(Action<double[,]> onSuccess)
+    {
+        string endpoint = GetFullEndpoint("get_vectors");
+        using (UnityWebRequest req = UnityWebRequest.Get(endpoint))
+        {
+            yield return req.Send();
+            while (!req.isDone)
+            {
+                yield return null;
+            }
+            if (req.isNetworkError)
+            {
+                print("Get Request Failed");
+            }
+            else
+            {
+                byte[] result = req.downloadHandler.data;
+                string jsonResponse = System.Text.Encoding.Default.GetString(result);
+                print("json Response: " + jsonResponse);
+
+                double[,] modelVectors = deserializeJsonDoubleArray(jsonResponse);
+                onSuccess(modelVectors);
             }
 
         }
@@ -134,6 +165,21 @@ public class ApiController : MonoBehaviour
         }
         print("serialized double array: " + output);
         return output;
+    }
+
+    static double[,] deserializeJsonDoubleArray(string jsonResponse)
+    {
+        double[] jsonPoints = JsonHelper.getJsonArray<double>(jsonResponse);
+        double[,] deserializedArray = new double[ImageTargetHandler.NUM_TARGETS, 3];
+        for (int i = 0; i < ImageTargetHandler.NUM_TARGETS; i++)
+        {
+            int start_ind = i * 3;
+            deserializedArray[i, 0] = jsonPoints[start_ind];
+            deserializedArray[i, 1] = jsonPoints[start_ind + 1];
+            deserializedArray[i, 2] = jsonPoints[start_ind + 2];
+        }
+
+        return deserializedArray;
     }
 
     public static IEnumerator RunOptimizationAsync(Action<List<double[,]>> onSuccess, double[,] spacePoints, double [,] normalVectors)
