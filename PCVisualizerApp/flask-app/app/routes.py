@@ -2,7 +2,9 @@ from flask import render_template, Flask, request, jsonify, redirect, send_from_
 from app import app
 import app.optimization.eqn_solver as solver
 from app.optimization.eqn_solver import extract_target_vals
-from app.optimization.optimization_methods import minimize_nelder, extract_distances, minimize_nelder_abs_diff
+from app.optimization.optimization_methods import minimize_nelder, extract_distances, \
+                                                minimize_nelder_abs_diff, minimize_BFGS_abs_diff, \
+                                                minimize_global_abs_diff
 import os
 import numpy as np
 import app.data_logger as logger
@@ -16,7 +18,7 @@ data = {"points":[[0,0,0], [0,0,0], [0,0,0]], "vectors":[[0,0,0], [0,0,0], [0,0,
 @app.route('/index')
 def index():
     user = {'username': 'meee'}
-    return render_template('index.html', title='Home', user=user, curr_stl_name=data.get("curr_stl_name"))
+    return render_template('index.html', title='Home', user=user, curr_stl_name=data.get("curr_stl_name"), data=data)
 
 @app.route('/view_data')
 def view_data():
@@ -104,26 +106,28 @@ def run_optimization():
 @app.route('/optimize', methods = ['POST'])
 def optimize():
     print("\n Optimizing!")
+    funcs = [minimize_nelder, minimize_nelder_abs_diff, minimize_BFGS_abs_diff, minimize_global_abs_diff]
+    updated_space_points = []
 
-    func = minimize_nelder_abs_diff
+    for func in funcs:
+        print("\n FUNCTION:", func.__name__)
+        #extract data from request
+        req_data = request.get_json()
+        space_points = np.array(req_data.get("spacePoints"))*1000
+        model_points = data["points"]
+        print("space: ", space_points)
+        print("model: ", model_points)
+        print("space distances: ", extract_target_vals(space_points) )
+        print("model distances: ", extract_target_vals(model_points) )
+        print("distace ratio: ", np.divide(extract_target_vals(space_points), extract_target_vals(model_points) ))
 
-    #extract data from request
-    req_data = request.get_json()
-    space_points = np.array(req_data.get("spacePoints"))*1000
-    model_points = data["points"]
-    print("space: ", space_points)
-    print("model: ", model_points)
-    print("space distances: ", extract_target_vals(space_points) )
-    print("model distances: ", extract_target_vals(model_points) )
-    print("distace ratio: ", np.divide(extract_target_vals(space_points), extract_target_vals(model_points) ))
-
-    #run optimization with Nelder-Mead function
-    updated_space_points =  func(space_points, model_points)
-    print("updated space: ", updated_space_points)
-    print("updated space distances: ", extract_target_vals(updated_space_points) )
-    print("diff space distances (new-old): ", np.subtract(np.array(updated_space_points), np.array(space_points)))
-    print("model distances: ", extract_target_vals(model_points) )
-    print("updated distace ratio: ", np.divide(extract_target_vals(updated_space_points), extract_target_vals(model_points) ))
+        #run optimization with Nelder-Mead function
+        updated_space_points =  func(space_points, model_points)
+        print("updated space: ", updated_space_points)
+        print("updated space distances: ", extract_target_vals(updated_space_points) )
+        print("diff space distances (new-old): ", np.subtract(np.array(updated_space_points), np.array(space_points)))
+        print("model distances: ", extract_target_vals(model_points) )
+        print("updated distace ratio: ", np.divide(extract_target_vals(updated_space_points), extract_target_vals(model_points) ))
 
     return jsonify(updated_space_points)
 

@@ -1,10 +1,19 @@
 import numpy as np 
 from scipy.optimize import minimize
+from scipy import optimize
 from app.optimization.eqn_solver import get_distance, extract_target_vals
 
-'''
- Given set of points in list, find distances 
-'''
+
+
+'''common methods'''
+def extract_optimization_vars(space_vals, model_vals):
+    n = len(model_vals)
+    space_vals = np.array(space_vals)
+    space_vals_flat = np.array(space_vals).reshape(n*3)
+    model_vals = np.array(model_vals)
+    return (n, space_vals, space_vals_flat, model_vals)
+
+#Given set of points in list, find distances 
 def extract_distances(points, flat_vals = False):
     #extract properties of points
     n = len(points)
@@ -22,6 +31,8 @@ def extract_distances(points, flat_vals = False):
     return np.array(target_vals)
 
 
+'''Methods for log function'''
+#log functions of just distances
 def log_distance_function(space_vals_flat, model_vals, space_vals_start_flat):
     space_vals = space_vals_flat.reshape(len(model_vals),3)
     space_vals_start = space_vals_start_flat.reshape(len(model_vals),3)
@@ -31,6 +42,16 @@ def log_distance_function(space_vals_flat, model_vals, space_vals_start_flat):
     model_dists = extract_distances(model_vals)
     return np.absolute( np.log( np.prod( np.divide(space_dists, model_dists) ) ) )
 
+def minimize_nelder(space_vals, model_vals):
+    (n, space_vals, space_vals_flat, model_vals) = extract_optimization_vars(space_vals, model_vals)
+    print("flat space", space_vals_flat)
+    minimized_vals =  minimize(log_distance_function, space_vals_flat, args=(model_vals, space_vals_flat), method='nelder-mead',
+               options={'xatol': 1e-2, 'disp': True}, bounds=[(i-5, i+5) for i in space_vals_flat]).x
+    return np.array(minimized_vals).reshape((n, 3)).tolist()
+    
+
+'''methods for absolute diff functions'''
+#absolute difference functions of ratios
 def extract_abs_diff_ratios(vals, model_vals):
     target_vals = extract_target_vals(vals)
     model_target_vals = extract_target_vals(model_vals)
@@ -45,21 +66,35 @@ def abs_diff_ratio_function(space_vals_flat, model_vals, a0, n, space_vals_start
     f = np.product( (r>=1) * r )
     return -f
 
-def minimize_nelder(space_vals, model_vals):
-    space_vals_flat = np.array(space_vals).reshape(len(model_vals)*3)
-    print("flat space", space_vals_flat)
-    minimized_vals =  minimize(log_distance_function, space_vals_flat, args=(model_vals, space_vals_flat), method='nelder-mead',
-               options={'xatol': 1e-2, 'disp': True}, bounds=[(i-5, i+5) for i in space_vals_flat]).x
-    return np.array(minimized_vals).reshape((len(model_vals), 3)).tolist()
-    
+def abs_diff_ratio_function_no_bounds(space_vals_flat, model_vals, a0, n, space_vals_start_flat):
+    space_vals = space_vals_flat.reshape(n,3)
+    # if not ( np.absolute(np.subtract(space_vals_flat, space_vals_start_flat)) < 5 ).all():
+    #     # print(np.absolute(np.subtract(space_vals_flat, space_vals_start_flat)) )
+    #     return 0
+    r = a0/extract_abs_diff_ratios(space_vals, model_vals)
+    f = np.product( (r>=1) * r )
+    return -f
+
 def minimize_nelder_abs_diff(space_vals, model_vals):
-    n = len(model_vals)
-    space_vals = np.array(space_vals)
-    space_vals_flat = np.array(space_vals).reshape(n*3)
-    model_vals = np.array(model_vals)
+    (n, space_vals, space_vals_flat, model_vals) = extract_optimization_vars(space_vals, model_vals)
+    #find initial ratio
     a0 = extract_abs_diff_ratios(space_vals, model_vals)
-    print("a0 = ", a0)
-    space_vals_flat = np.array(space_vals).reshape(n*3)
     minimized_vals =  minimize(abs_diff_ratio_function, space_vals_flat, args=(model_vals, a0, n, space_vals_flat), method='nelder-mead',
                options={'xatol': 1e-2, 'disp': True}, bounds=[(i-5, i+5) for i in space_vals_flat]).x
+    return np.array(minimized_vals).reshape(n, 3).tolist()
+
+
+def minimize_BFGS_abs_diff(space_vals, model_vals):
+    (n, space_vals, space_vals_flat, model_vals) = extract_optimization_vars(space_vals, model_vals)
+    a0 = extract_abs_diff_ratios(space_vals, model_vals)
+    minimized_vals =  minimize(abs_diff_ratio_function_no_bounds, space_vals_flat, args=(model_vals, a0, n, space_vals_flat), method='BFGS',
+              options={ 'disp': True}).x
+    return np.array(minimized_vals).reshape(n, 3).tolist()
+
+def minimize_global_abs_diff(space_vals, model_vals):
+    (n, space_vals, space_vals_flat, model_vals) = extract_optimization_vars(space_vals, model_vals)
+    bounds=[(i-5, i+5) for i in space_vals_flat]
+    a0 = extract_abs_diff_ratios(space_vals, model_vals)
+    minimized_vals =  optimize.shgo(abs_diff_ratio_function_no_bounds, bounds, args=(model_vals, a0, n, space_vals_flat),
+              options={ 'disp': True}).x
     return np.array(minimized_vals).reshape(n, 3).tolist()
