@@ -1,53 +1,61 @@
 {% extends "base.html" %} {% block content %}
 
 <script type="text/javascript" src="{{ url_for('static', filename='js/loadStl.js') }}"></script>
+
 <div class="container">
     <div class="row">
         <div class="col">
 
             <h3>Upload files</h3>
             <hr>
-
             <form action="/upload_stl" method="POST" enctype="multipart/form-data">
 
-                <div class="form-group">
-                    <label>Select stl file</label>
-                    <div class="custom-file">
-                        <input type="file" class="custom-file-input" name="stl" id="stl">
-                        <label class="custom-file-label" for="stl">Select stl file...</label>
+                <div class="form-group row">
+                    <div class = "col-sm-6">
+                        <h4> Current .stl: {{curr_stl_name}}</h4>
+                        <label>Select stl file</label>
+                        <div class="custom-file">
+                            <input type="file" class="custom-file-input" name="stl" id="stl">
+                            <label class="custom-file-label" for="stl">Select stl file...</label>
+                        </div>
                     </div>
-                    <label>Select obj file</label>
-                    <div class="custom-file">
-                        <input type="file" class="custom-file-input" name="obj" id="obj">
-                        <label class="custom-file-label" for="obj">Select obj file...</label>
-                    </div>
+                    <div class="col-sm-6">
+                        <h4> Current .obj: {{data['curr_obj_name']}}</h4>
+                        <label>Select obj file</label>
+                        <div class="custom-file">
+                            <input type="file" class="custom-file-input" name="obj" id="obj">
+                            <label class="custom-file-label" for="obj">Select obj file...</label>
+                        </div>
+                    </div>                   
                 </div>
-
                 <button type="submit" class="btn btn-primary">Upload</button>
 
             </form>
+            
+            
 
         </div>
     </div>
 </div>
+
 <div id="model" style="width: 80%; height: 500px; margin:20px auto"> </div>
 <div class="container" style="margin-bottom: 30px;">
     <div class="row">
-        <div id="points-input">
+        <div id="points-input" class="col-sm-6">
 
             <form class="form-inline" id="p1">
                 <img src="{{ url_for('static', filename='images/TargetSi_1.png') }}" alt="image_si" class="img-thumbnail" width="40px" style="border:1px solid #FC2503;">
                 <div class="form-group">
                     <label for="x1">X1:</label><br>
-                    <input type="text" id="x1" name="x1" value="0"><br>
+                    <input type="text" id="x1" name="x1" value="{{data['points'][0][0]}}"><br>
                 </div>
                 <div class="form-group">
                     <label for="y1">Y1:</label><br>
-                    <input type="text" id="y1" name="y1" value="0"><br>
+                    <input type="text" id="y1" name="y1" value="{{data['points'][0][1]}}"><br>
                 </div>
                 <div class="form-group">
                     <label for="z1">Z1:</label><br>
-                    <input type="text" id="z1" name="z1" value="0"><br>
+                    <input type="text" id="z1" name="z1" value="{{data['points'][0][2]}}"><br>
                 </div>
             </form>
 
@@ -55,15 +63,15 @@
                 <img src="{{ url_for('static', filename='images/TargetC_2.png') }}" alt="image_si" class="img-thumbnail" width="40px" style="border:1px solid #035AFC;">
                 <div class="form-group">
                     <label for="x2">X2:</label><br>
-                    <input type="text" id="x2" name="x2" value="0"><br>
+                    <input type="text" id="x2" name="x2" value="{{data['points'][1][0]}}"><br>
                 </div>
                 <div class="form-group">
                     <label for="y2">Y2:</label><br>
-                    <input type="text" id="y2" name="y2" value="0"><br>
+                    <input type="text" id="y2" name="y2" value="{{data['points'][1][1]}}"><br>
                 </div>
                 <div class="form-group">
                     <label for="z2">Z2:</label><br>
-                    <input type="text" id="z2" name="z2" value="0"><br>
+                    <input type="text" id="z2" name="z2" value="{{data['points'][1][2]}}"><br>
                 </div>
             </form>
 
@@ -71,38 +79,37 @@
                 <img src="{{ url_for('static', filename='images/TargetRh_3.png') }}" alt="image_si" class="img-thumbnail" width="40px" style="border:1px solid #1E9900;">
                 <div class="form-group">
                     <label for="x3">X3:</label><br>
-                    <input type="text" id="x3" name="x3" value="0"><br>
+                    <input type="text" id="x3" name="x3" value="{{data['points'][2][0]}}"><br>
                 </div>
                 <div class="form-group">
                     <label for="y3">Y3:</label><br>
-                    <input type="text" id="y3" name="y3" value="0"><br>
+                    <input type="text" id="y3" name="y3" value="{{data['points'][2][1]}}"><br>
                 </div>
                 <div class="form-group">
                     <label for="z3">Z3:</label><br>
-                    <input type="text" id="z3" name="z3" value="0"><br>
+                    <input type="text" id="z3" name="z3" value="{{data['points'][2][2]}}"><br>
                 </div>
             </form>
 
             <button type="button" class="btn btn-primary" id="add-points-button">Add Points</button>
 
         </div>
-    </div>
-    <div class="row">
-        <div id="vectors-input">
+
+        <div id="vectors-input"  class="col-sm-6">
 
             <form class="form-inline" id="v1">
                 <img src="{{ url_for('static', filename='images/TargetSi_1.png') }}" alt="image_si" class="img-thumbnail" width="40px" style="border:1px solid #FC2503;">
                 <div class="form-group">
                     <label for="vx1">vx1:</label><br>
-                    <input type="text" id="vx1" name="vx1" value="0"><br>
+                    <input type="text" id="vx1" name="vx1" value="{{data['vectors'][0][0]}}"><br>
                 </div>
                 <div class="form-group">
                     <label for="vy1">vY1:</label><br>
-                    <input type="text" id="vy1" name="vy1" value="0"><br>
+                    <input type="text" id="vy1" name="vy1" value="{{data['vectors'][0][1]}}"><br>
                 </div>
                 <div class="form-group">
                     <label for="vz1">vZ1:</label><br>
-                    <input type="text" id="vz1" name="vz1" value="0"><br>
+                    <input type="text" id="vz1" name="vz1" value="{{data['vectors'][0][2]}}"><br>
                 </div>
             </form>
 
@@ -110,15 +117,15 @@
                 <img src="{{ url_for('static', filename='images/TargetC_2.png') }}" alt="image_si" class="img-thumbnail" width="40px" style="border:1px solid #035AFC;">
                 <div class="form-group">
                     <label for="vx2">vX2:</label><br>
-                    <input type="text" id="vx2" name="vx2" value="0"><br>
+                    <input type="text" id="vx2" name="vx2" value="{{data['vectors'][1][0]}}"><br>
                 </div>
                 <div class="form-group">
                     <label for="vy2">vY2:</label><br>
-                    <input type="text" id="vy2" name="vy2" value="0"><br>
+                    <input type="text" id="vy2" name="vy2" value="{{data['vectors'][1][1]}}"><br>
                 </div>
                 <div class="form-group">
                     <label for="vz2">vZ2:</label><br>
-                    <input type="text" id="vz2" name="vz2" value="0"><br>
+                    <input type="text" id="vz2" name="vz2" value="{{data['vectors'][1][2]}}"><br>
                 </div>
             </form>
 
@@ -126,15 +133,15 @@
                 <img src="{{ url_for('static', filename='images/TargetRh_3.png') }}" alt="image_si" class="img-thumbnail" width="40px" style="border:1px solid #1E9900;">
                 <div class="form-group">
                     <label for="vx3">vX3:</label><br>
-                    <input type="text" id="vx3" name="vx3" value="0"><br>
+                    <input type="text" id="vx3" name="vx3" value="{{data['vectors'][2][0]}}"><br>
                 </div>
                 <div class="form-group">
                     <label for="vy3">vY3:</label><br>
-                    <input type="text" id="vy3" name="vy3" value="0"><br>
+                    <input type="text" id="vy3" name="vy3" value="{{data['vectors'][2][1]}}"><br>
                 </div>
                 <div class="form-group">
                     <label for="vz3">vZ3:</label><br>
-                    <input type="text" id="vz3" name="vz3" value="0"><br>
+                    <input type="text" id="vz3" name="vz3" value="{{data['vectors'][2][2]}}"><br>
                 </div>
             </form>
 
@@ -145,7 +152,7 @@
 </div>
 
 <script type="text/javascript">
-    console.log("helo")
+    var data = {{data|tojson}}
 
     function mapInputsToDouble(inputContainers) {
         let mappedInputContainers = [];
@@ -198,10 +205,13 @@
     });
 
     window.onload = function() {
-        let objName = "{{curr_stl_name}}";
-        console.log(objName)
-        STLViewer("{{ url_for('static', filename='objects/objName') }}".replace("objName", objName), "model")
+        let objName = data["curr_stl_name"]
+        let points = data["points"]
+        
+        console.log(data)
+        STLViewer("{{ url_for('static', filename='objects/objName') }}".replace("objName", objName), "model");
         addPoint([0, 0, 0]);
+        
 
     }
 </script>

@@ -1,0 +1,77 @@
+{% extends "base.html" %} {% block content %}
+<div class="container-fluid">
+    <h1>Optimization Settings</h1>
+
+</div>
+<div class="container">
+    <div class = "row">
+        <div class="row">
+            <form class="form-inline">
+                <h4>Current Optimization Method: {{optimization_functions[optimization_index]}}  </h4>
+                <div class="form-group">
+                    <label>Optimization Method:</label><br>
+                    <select id="optimization-method-select" class="form-select" aria-label="Default select example">
+                    </select>
+                </div>
+            </form>         
+        </div>
+        <div class="row">
+            <form class="form-inline" id="p1">
+                <div class="form-group">
+                    <label for="tolerance"> Tolerance (mm)</label><br>
+                    <input type="text" id="tolerance" name="tolerance" value="{{tolerance_mm}}"><br>
+                </div>
+            </form>   
+        </div>
+        <button id="update-optimization-settings-button" type="submit" class="btn btn-primary">
+            Update Optimization Settings
+        </button>
+    </div>
+    <div class = "row" style="margin-top:20px">
+          <div class="form-group">
+            <label for="optimizationTextarea">Optimization Output</label>
+            <textarea class="form-control" id="optimizationOutputTextarea" rows="20"> {{optimization_output_string}}</textarea>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    var funcs = {{optimization_functions | tojson}};
+    let optimization_index = {{optimization_index|tojson}}
+
+    $(document).ready( function () {
+        $('#optimization-method-select').empty();
+        $.each(funcs, function(i, p) {
+            $('#optimization-method-select').append($('<option></option>').val(i).html(p));
+            if(i==optimization_index){
+                console.log(i);
+                
+            }
+        });
+        $('#optimization-method-select').val(optimization_index)
+
+        $("#update-optimization-settings-button").on("click", function() {
+            let vectorsList = [];
+            let optimizationIndex = parseFloat($("#optimization-method-select").val());
+            let tolerance = parseFloat($("#tolerance").val());
+            console.log("opt index = " + optimizationIndex + " , tolerance = " + tolerance);
+            $.ajax({
+                type: "POST",
+                url: "/update_optimization_settings",
+                contentType: "application/json",
+                data: JSON.stringify({
+                    "optimization_index": optimizationIndex,
+                    "tolerance_mm":tolerance
+                })
+            }).done(function(resp) {
+                console.log(resp);
+            });
+        });
+       
+        
+    });
+</script>
+
+
+{% endblock %}
