@@ -39,6 +39,9 @@ public class ApiController : MonoBehaviour
     }
 
 
+    public static string MODEL_SAVE_PATH = Application.persistentDataPath + "/object.obj";
+
+
     public static IEnumerator GetModelPointsAsync(Action<double[,]> onSuccess)
     {
         string endpoint = GetFullEndpoint("get_points");
@@ -105,29 +108,44 @@ public class ApiController : MonoBehaviour
         }
     }
 
-
-    public static IEnumerator SetModelObjectAsync(GameObject objHolder)
+    public static void setMesh(GameObject objHolder)
     {
-        string endpoint = GetFullEndpoint("get_uploaded_obj");
-        using (UnityWebRequest uwr = new UnityWebRequest(endpoint))
-        {
-            string savePath = Application.persistentDataPath + "/object.obj";
-            uwr.downloadHandler = new DownloadHandlerFile(savePath);
-            yield return uwr.SendWebRequest();
-            if (uwr.isNetworkError || uwr.isHttpError)
-            {
-                print("Setting model failed");
-            }
-            else
-            {
-                //load model
-                Mesh holderMesh = new Mesh();
-                ObjImporter newMesh = new ObjImporter();
-                holderMesh = newMesh.ImportFile(Application.persistentDataPath + "/object.obj");
+        //load model
+        //ObjImporter newMesh = new ObjImporter();
+        FastObjImporter newMesh = new FastObjImporter();
+        Mesh holderMesh = newMesh.ImportFile(MODEL_SAVE_PATH);
 
-                //set mesh filter object to loaded model
-                MeshFilter filter = objHolder.GetComponent<MeshFilter>();
-                filter.mesh = holderMesh;
+        //set mesh filter object to loaded model
+        MeshFilter filter = objHolder.GetComponent<MeshFilter>();
+        filter.mesh = holderMesh;
+        print("Done loading object onto mesh");
+    }
+
+
+    public static IEnumerator SetModelObjectAsync(GameObject objHolder, bool sendRequest)
+    {
+        if (!sendRequest)
+        {
+            setMesh(objHolder);
+        }
+        else
+        {
+            string endpoint = GetFullEndpoint("get_uploaded_obj");
+            using (UnityWebRequest uwr = new UnityWebRequest(endpoint))
+            {
+                string savePath = MODEL_SAVE_PATH;
+                uwr.downloadHandler = new DownloadHandlerFile(savePath);
+                yield return uwr.SendWebRequest();
+                if (uwr.isNetworkError || uwr.isHttpError)
+                {
+                    print("Setting model failed");
+                }
+                else
+                {
+                    print("Done downloading object");
+                    setMesh(objHolder);
+
+                }
             }
         }
     }
@@ -185,7 +203,7 @@ public class ApiController : MonoBehaviour
     public static IEnumerator RunOptimizationAsync(Action<List<double[,]>> onSuccess, double[,] spacePoints, double [,] normalVectors)
     {
         //call api
-        string endpoint = GetFullEndpoint("run_optimization");
+        string endpoint = GetFullEndpoint("optimize");
         using (UnityWebRequest uwr = new UnityWebRequest(endpoint, "POST"))
         {
             string json = serializeDoubleArrayToJson(spacePoints, "spacePoints", true, false) + serializeDoubleArrayToJson(normalVectors, "normalVectors", false, true);
@@ -202,6 +220,7 @@ public class ApiController : MonoBehaviour
             }
             else
             {
+                print("Running optimization success");
                 byte[] result = uwr.downloadHandler.data;
                 string jsonResponse = System.Text.Encoding.Default.GetString(result);
                 print("json Response: " + jsonResponse);

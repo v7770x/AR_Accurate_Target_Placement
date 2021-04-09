@@ -156,7 +156,7 @@ public class FitPoints3D
         MathNet.Numerics.LinearAlgebra.Factorization.Svd<double> svdTarget = covTarget.Svd();
         Matrix<double> uSource = svdSource.U;
         Matrix<double> uTarget = svdTarget.U;
-
+/////////////////////////here//////////////////
         // Get the Householder matrix also known as a reflection matrix about a plane
         Matrix<double> householder = getHouseHolderMatrix(source);
 

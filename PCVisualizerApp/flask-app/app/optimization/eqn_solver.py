@@ -32,7 +32,7 @@ def get_distance(p1, p2):
     return np.linalg.norm(p1-p2)
 
 def get_angle(v1, v2):
-    return (np.dot(v1,v2)/(np.linalg.norm(v1) * np.linalg.norm(v2)) )
+    return np.arccos(np.dot(v1,v2)/(np.linalg.norm(v1) * np.linalg.norm(v2)) )
 
 '''
  Given set of points in list, find distances and angles between points

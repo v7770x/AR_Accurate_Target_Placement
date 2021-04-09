@@ -9,10 +9,20 @@ using UnityEngine.UI;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.IO;
 using TMPro;
-using MathNet.Numerics.LinearAlgebra.Complex;
+//using MathNet.Numerics.LinearAlgebra.Complex;
 using System.Linq;
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Double;
+using Microsoft.MixedReality.Toolkit.Physics;
+using System.Data.Odbc;
+
+enum ProjectionMethod
+{
+    METHOD_NONE,
+    PCA,
+    NORMAL,
+    CROSS
+}
 
 public class ImageTargetHandler : MonoBehaviour
 {
@@ -34,8 +44,10 @@ public class ImageTargetHandler : MonoBehaviour
     public GameObject [] point_texts = new GameObject[NUM_TARGETS];
     public GameObject [] distance_texts = new GameObject[NUM_TARGETS];
     public GameObject[] model_texts = new GameObject[NUM_TARGETS];
+    public GameObject[] opt_texts = new GameObject[NUM_TARGETS];
     public GameObject ip_text;
     public GameObject optimize_text;
+    public GameObject[] optimizationMarkers = new GameObject[NUM_TARGETS];
 
     //hold projection objects
     public GameObject ProjectionObject;
@@ -50,13 +62,21 @@ public class ImageTargetHandler : MonoBehaviour
     public GameObject OptimizeButton;
     public GameObject ChangeIPButton;
     public GameObject ShowVectorsButton;
+    public GameObject UpdatePointsButton;
     public GameObject UpdateModelButton;
+    public GameObject RotateZButton;
+    public GameObject RotateYButton;
+    public GameObject RotateXButton;
     public GameObject ProjectModelPCAButton;
     public GameObject ProjectModelNormalButton;
+    public GameObject ProjectModelCrossButton;
+
+    //store chosen projection method temporarily
+    private ProjectionMethod chosenProjectionMethod = ProjectionMethod.METHOD_NONE;
 
     //keyboard input
     TouchScreenKeyboard keyboard;
-    public static string ipAddressText = "192.168.0.119";
+    public static string ipAddressText = "192.168.0.22";
 
     //data in persistent storage
     [System.Serializable]
@@ -70,6 +90,7 @@ public class ImageTargetHandler : MonoBehaviour
 
     void updateIpAddressText(string ipAddress)
     {
+        print("updating ip address text to: " + ipAddress);
         ip_text.GetComponent<TextMeshPro>().text = "IP address: " + ipAddress;
     }
 
@@ -88,7 +109,7 @@ public class ImageTargetHandler : MonoBehaviour
                 
                 keyboard = null;
                 updateStoredData();
-                UpdateModel();
+                CheckUpdateModelOnStart();
             }
         }
 
@@ -154,11 +175,17 @@ public class ImageTargetHandler : MonoBehaviour
         OptimizeButton.GetComponent<Interactable>().OnClick.AddListener(HandleOptimizeButtonClick);
         ChangeIPButton.GetComponent<Interactable>().OnClick.AddListener(HandleIPButtonClick);
         ShowVectorsButton.GetComponent<Interactable>().OnClick.AddListener(HandleShowVectorsClick);
-        UpdateModelButton.GetComponent<Interactable>().OnClick.AddListener(UpdateModel);
+        UpdateModelButton.GetComponent<Interactable>().OnClick.AddListener(HandleUpdateModelClick);
+        UpdatePointsButton.GetComponent<Interactable>().OnClick.AddListener(UpdatePoints);
         ProjectModelPCAButton.GetComponent<Interactable>().OnClick.AddListener(HandleProjectPCAClick);
         ProjectModelNormalButton.GetComponent<Interactable>().OnClick.AddListener(HandleProjectNormalClick);
+        ProjectModelCrossButton.GetComponent<Interactable>().OnClick.AddListener(HandleProjectCrossClick);
+        RotateXButton.GetComponent<Interactable>().OnClick.AddListener(HandleRotateX);
+        RotateYButton.GetComponent<Interactable>().OnClick.AddListener(HandleRotateY);
+        RotateZButton.GetComponent<Interactable>().OnClick.AddListener(HandleRotateZ);
 
         //printMatrix(ApiController.GetModelPoints().points, "space points");
+        ///*
         if (!loadStoredData())
         {
             HandleIPButtonClick();
@@ -166,14 +193,34 @@ public class ImageTargetHandler : MonoBehaviour
         else
         {
             updateIpAddressText(storageData.ipAddress);
-            UpdateModel();
+            CheckUpdateModelOnStart();
         }
+        //*/
+        /*
+        storageData.ipAddress = ipAddressText;
+        updateStoredData();
+        updateIpAddressText(ipAddressText);
+        UpdateModel();
+        */
         
 
 
     }
 
-
+    private void CheckUpdateModelOnStart()
+    {
+        print(ApiController.MODEL_SAVE_PATH);
+        if(File.Exists(ApiController.MODEL_SAVE_PATH))
+        {
+            print("Model exists, not updating");
+            UpdateModel(false);
+        }
+        else
+        {
+            print("Model does not exist, updating");
+            UpdateModel(true);
+        }
+    }
 
     /// <summary>
     /// When destroyed, remove the callback functions from the event handlers
@@ -189,9 +236,13 @@ public class ImageTargetHandler : MonoBehaviour
         OptimizeButton.GetComponent<Interactable>().OnClick.RemoveListener(HandleOptimizeButtonClick);
         ChangeIPButton.GetComponent<Interactable>().OnClick.RemoveListener(HandleIPButtonClick);
         ShowVectorsButton.GetComponent<Interactable>().OnClick.RemoveListener(HandleShowVectorsClick);
-        UpdateModelButton.GetComponent<Interactable>().OnClick.RemoveListener(UpdateModel);
+        UpdateModelButton.GetComponent<Interactable>().OnClick.RemoveListener(HandleUpdateModelClick);
         ProjectModelPCAButton.GetComponent<Interactable>().OnClick.RemoveListener(HandleProjectPCAClick);
         ProjectModelNormalButton.GetComponent<Interactable>().OnClick.RemoveListener(HandleProjectNormalClick);
+        ProjectModelCrossButton.GetComponent<Interactable>().OnClick.RemoveListener(HandleProjectCrossClick);
+        RotateXButton.GetComponent<Interactable>().OnClick.RemoveListener(HandleRotateX);
+        RotateYButton.GetComponent<Interactable>().OnClick.RemoveListener(HandleRotateY);
+        RotateZButton.GetComponent<Interactable>().OnClick.RemoveListener(HandleRotateZ);
     }
 
     public void HandleResetButtonClick()
@@ -215,6 +266,44 @@ public class ImageTargetHandler : MonoBehaviour
         {
             printMatrix(possibleSpacePoints[i], "possible matrix " + i);
         }
+
+        Vector3[] vector3Points = ConvertToVector3s(possibleSpacePoints[0]);
+
+        // check which method was called earlier and call it again with the new adjusted points
+        if (possibleSpacePoints.Count == 1)
+        {
+            switch (chosenProjectionMethod)
+            {
+                case ProjectionMethod.PCA:
+                    print("Projecting PCA after optimizing");
+                    ApplyTransformPCA(ModelPoints, possibleSpacePoints[0]);
+                    break;
+                case ProjectionMethod.CROSS:
+                    print("Projecting Cross after optimizing");
+                    ApplyTransformCross(ModelPoints, possibleSpacePoints[0]);
+                    break;
+                case ProjectionMethod.NORMAL:
+                    print("Projecting normal after optimizing");
+                    ApplyTransformNormal(ModelVectors, ModelPoints, possibleSpacePoints[0]);
+                    break;
+                default:
+                    break;
+            }
+            if (numTargetsFound != NUM_TARGETS)
+            {
+                return;
+            }
+
+            // change the positions of the optimization targets to the new positions from the optimization result
+            for (int i = 0; i < NUM_TARGETS; i++)
+            {
+                // set marker
+                optimizationMarkers[i].transform.position = vector3Points[i];
+                // update text
+                UpdateOptimizationPoints(i, vector3Points[i]);
+            }
+        }
+
     }
 
     public void HandleOptimizeButtonClick()
@@ -225,18 +314,16 @@ public class ImageTargetHandler : MonoBehaviour
         spacePoints = ExtractPointsFromTransforms(targetTransforms);
         normalVectors = ExtractVectorsFromTransforms(targetTransforms);
         //spacePoints = new double[NUM_TARGETS, 3] { { -0.6659, -0.5421, -0.7766 }, { -0.2835, -0.5464, -0.5027 }, { -0.3628, -0.5376, -1.1833 } };
+        //normalVectors = new double[NUM_TARGETS, 3] { { -0.6659, -0.5421, -0.7766 }, { -0.2835, -0.5464, -0.5027 }, { -0.3628, -0.5376, -1.1833 } };
+
 
         //call api to optimize
-        StartCoroutine(ApiController.RunOptimizationAsync(OptimizationOnSuccess, spacePoints, normalVectors));
         print("Optimize button clicked");
         optimize_text.GetComponent<Text>().text = "Optimizing...";
+        StartCoroutine(ApiController.RunOptimizationAsync(OptimizationOnSuccess, spacePoints, normalVectors));
         if (numTargetsFound!= NUM_TARGETS)
         {
             print("targets not found");
-        }
-        else
-        {
-
         }
     }
 
@@ -269,6 +356,16 @@ public class ImageTargetHandler : MonoBehaviour
         }
     }
 
+    public GameObject createSphere(Vector3 position, string color)
+    {
+        GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        sphere.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
+        sphere.transform.position = position;
+        MeshRenderer meshRenderer = sphere.GetComponent<MeshRenderer>();
+        meshRenderer.material = Resources.Load<Material>(color);
+        return sphere;
+    }
+
     /// <summary>
     /// event handler function to add position of target to list when a target is found
     /// </summary>
@@ -290,20 +387,43 @@ public class ImageTargetHandler : MonoBehaviour
 
 
             //draw sphere at (0,0,0) of target
-            GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            sphere.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
-            sphere.transform.position = targetTransform.position;
-            MeshRenderer meshRenderer = sphere.GetComponent<MeshRenderer>();
-            meshRenderer.material = Resources.Load<Material>("red");
+            GameObject sphere = createSphere(targetTransform.position, "red");
+            GameObject opSphere = createSphere(targetTransform.position, "green");
+            optimizationMarkers[targetNumber] = opSphere;
 
-            HandleProjectNormalClick();
-
-
+            HandleProjectPCAClick();
+            //HandleProjectNormalClick();
 
         }
 
        
 
+    }
+
+    /// <summary>
+    /// Method to rotate projection object 180 degrees about plane created by points
+    /// </summary>
+    public void HandleRotateX()
+    {
+        objHolder.gameObject.transform.localRotation *= Quaternion.Euler(180, 0, 0);
+    }
+
+    public void HandleRotateY()
+    {
+        objHolder.gameObject.transform.localRotation *= Quaternion.Euler(0, 180, 0);
+    }
+
+    public void HandleRotateZ()
+    {
+        objHolder.gameObject.transform.localRotation *= Quaternion.Euler(0, 0, 180);
+    }
+
+    /// <summary>
+    /// Method to rotate projection object 180 degrees about plane created by points
+    /// </summary>
+    public void HandleFlipProjectionObject2()
+    {
+        ProjectionObject.gameObject.transform.localRotation *= Quaternion.Euler(0, 0, 180);
     }
 
     /// <summary>
@@ -313,8 +433,9 @@ public class ImageTargetHandler : MonoBehaviour
     {
         if (numTargetsFound == NUM_TARGETS)
         {
-            ApplyTransformPCA(ModelPoints);
-
+            ApplyTransformPCA(ModelPoints, ExtractPointsFromTransforms(targetTransforms));
+            chosenProjectionMethod = ProjectionMethod.PCA;
+            
         }
     }
 
@@ -322,16 +443,96 @@ public class ImageTargetHandler : MonoBehaviour
     {
         if (numTargetsFound == NUM_TARGETS)
         {
-            ApplyTransformNormal(ModelVectors, ModelPoints);
+            ApplyTransformNormal(ModelVectors, ModelPoints, ExtractPointsFromTransforms(targetTransforms));
+            chosenProjectionMethod = ProjectionMethod.NORMAL;
 
         }
     }
 
-    private void ApplyTransformNormal(double [,] modelVectors, double[,] modelPoints)
+    public void HandleProjectCrossClick()
+    {
+        if (numTargetsFound == NUM_TARGETS)
+        {
+            ApplyTransformCross(ModelPoints, ExtractPointsFromTransforms(targetTransforms));
+            chosenProjectionMethod = ProjectionMethod.CROSS;
+
+        }
+    }
+
+    private Vector3[] ConvertToVector3s(double [,] doubleVectors)
+    {
+        Vector3[] vector3s = new Vector3[NUM_TARGETS];
+        for (int i = 0; i < NUM_TARGETS; i++)
+        {
+            vector3s[i].x = (float)doubleVectors[i, 0];
+            vector3s[i].y = (float)doubleVectors[i, 1];
+            vector3s[i].z = (float)doubleVectors[i, 2];
+        }
+        return vector3s;
+    }
+
+    private Matrix<double> FindOrthonormalMatrix(Vector3[] points)
+    {
+        // find 3 orthogonal vectors
+        Vector3 v1 = Vector3.Normalize(points[1] - points[0]);
+        Vector3 v2 = Vector3.Normalize(points[1] - points[2]);
+        Vector3 norm = Vector3.Normalize(Vector3.Cross(v1, v2));
+        Vector3 v2_ortho = Vector3.Normalize(Vector3.Cross(norm, v1));
+
+        // build a matrix with the vectors
+        Matrix<double> T = Matrix<double>.Build.Dense(3, 3);
+        T[0, 0] = v1.x;
+        T[1, 0] = v1.y;
+        T[2, 0] = v1.z;
+        T[0, 1] = v2_ortho.x;
+        T[1, 1] = v2_ortho.y;
+        T[2, 1] = v2_ortho.z;
+        T[0, 2] = norm.x;
+        T[1, 2] = norm.y;
+        T[2, 2] = norm.z;
+        
+        return T;
+    }
+
+
+    private void ApplyTransformCross(double[,] modelPoints, double[,] spacePoints)
+    {
+        print("Applying Transform Cross");
+        // get in vector3 format
+        Vector3[] modelVector3s = ConvertToVector3s(modelPoints);
+        Vector3[] spaceVector3s = ConvertToVector3s(spacePoints);
+        
+
+        // find the orthogonal matricies of each set of points
+        var R1 = FindOrthonormalMatrix(modelVector3s);
+        var R2 = FindOrthonormalMatrix(spaceVector3s);
+
+        // find rotation matrix
+        var R = R2.Multiply(R1.Inverse());
+
+        // find translation
+        var T = Matrix<double>.Build.DenseIdentity(4);
+        Vector<double> V = Vector<double>.Build.DenseOfArray(new double[] { modelPoints[1, 0], modelPoints[1, 1], modelPoints[1, 2] });
+        T.SetSubMatrix(0, 0, R);
+        var P2_Rotated = R * V;
+        var translation = spaceVector3s[1] - (new Vector3( (float)P2_Rotated[0], (float)P2_Rotated[1], (float)P2_Rotated[2] ));
+
+        print(R);
+        print(translation);
+
+        // apply transformation
+        ProjectionObject.SetActive(true);
+        ProjectionObject.transform.rotation = QuaternionFromMatrix(R.ToArray());
+        ProjectionObject.transform.transform.position = translation;
+
+    }
+
+
+
+    private void ApplyTransformNormal(double [,] modelVectors, double[,] modelPoints, double[,] spacePoints)
     {
         print("APPLYING Normal TRANSFORM");
         
-        double[,] spacePoints = ExtractPointsFromTransforms(targetTransforms);
         double[,] spaceVectors = ExtractVectorsFromTransforms(targetTransforms);
 
         //testing:
@@ -443,12 +644,8 @@ public class ImageTargetHandler : MonoBehaviour
     /// Then apply the transformation to the 3D model
     /// </summary>
     /// <param name="modelPoints"></param>
-    private void ApplyTransformPCA(double [,] modelPoints) 
+    private void ApplyTransformPCA(double [,] modelPoints, double[,] spacePoints) 
     {
-        //extract the points in real space from the transform components saved
-        double[,] spacePoints;
-        spacePoints = ExtractPointsFromTransforms(targetTransforms);
-        //spacePoints = ExtractPointsFromGameObjects(targetObjects);
         DisplayDistances(spacePoints);
 
         //spacePoints = new double[NUM_TARGETS, 3] { { -0.6659, -0.5421, -0.7766 }, { -0.2835, -0.5464, -0.5027 }, { -0.3628, -0.5376, -1.1833 } };
@@ -591,6 +788,13 @@ public class ImageTargetHandler : MonoBehaviour
         UIText.text = "Target " + targetNumber + ", Position = " + targetTransform.position * 1000;
     }
 
+    private void UpdateOptimizationPoints(int targetNumber, Vector3 position)
+    {
+        print("Updating opt target " + targetNumber + " position to " + position);
+        Text UIText = opt_texts[targetNumber].GetComponent<Text>();
+        UIText.text = "Opt Target " + targetNumber + ", Position = " + position * 1000;
+    }
+
     public void HandleModelPoints(double[,] modelPoints)
     {
         print("Model points received");
@@ -600,6 +804,10 @@ public class ImageTargetHandler : MonoBehaviour
         {
             model_texts[i].GetComponent<Text>().text = "Model point " + (i + 1) + " = " + "(" + ModelPoints[i, 0] + ", " + ModelPoints[i, 1] + ", " + ModelPoints[i, 2] + ")";
         }
+        //double [,] spacePoints = new double[NUM_TARGETS, 3] { { -0.6659, -0.5421, -0.7766 }, { -0.2835, -0.5464, -0.5027 }, { -0.3628, -0.5376, -1.1833 } };
+        //ApplyTransformCross(modelPoints, spacePoints);
+        //flipProjectionObject();
+        //HandleOptimizeButtonClick();
     }
 
     public void HandleModelVectors(double[,] modelVectors)
@@ -609,12 +817,22 @@ public class ImageTargetHandler : MonoBehaviour
         printMatrix(modelVectors, "Model Vectors");
     }
 
-    private void UpdateModel()
+    public void HandleUpdateModelClick()
     {
-        StartCoroutine(ApiController.SetModelObjectAsync(objHolder));
+        UpdateModel(true);
+    }
+
+    private void UpdateModel(bool sendRequest)
+    {
+        StartCoroutine(ApiController.SetModelObjectAsync(objHolder, sendRequest));
+        UpdatePoints();
+
+    }
+
+    private void UpdatePoints()
+    {
         StartCoroutine(ApiController.GetModelPointsAsync(HandleModelPoints));
         StartCoroutine(ApiController.GetModelVectorsAsync(HandleModelVectors));
-
     }
 
 

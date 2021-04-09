@@ -132,6 +132,7 @@ def optimize():
     req_data = request.get_json()
     space_points = np.array(req_data.get("spacePoints"))*1000
     model_points = data["points"]
+    normal_vectors = np.array(req_data.get("normalVectors"))
     print("space: ", space_points)
     print("model: ", model_points)
     print("space distances: ", extract_target_vals(space_points) )
@@ -152,11 +153,15 @@ def optimize():
     print("model distances: ", extract_target_vals(model_points) )
     print("updated distace ratio: ", np.divide(extract_target_vals(updated_space_points), extract_target_vals(model_points) ))
 
-    data["optimization_output_string"] += "\n updated space_points: " + str(updated_space_points)\
+    data["optimization_output_string"] += "\n updated space_points: " + str(np.array(updated_space_points))\
                                         + "\n updated space_params: " + str(extract_target_vals(updated_space_points) )\
                                         + "\n ****diff space points (new-old): " + str(np.subtract(np.array(updated_space_points), np.array(space_points)))\
                                         + "\n ****updated parameter ratios: " + str(np.divide(extract_target_vals(updated_space_points), extract_target_vals(model_points)))
 
-    return jsonify(updated_space_points)
+    #extract angles and distances of points measured and log
+    (distances, angles) = solver.extract_target_vals(space_points, True)
+    logger.save_optimization_data(model_points, space_points, distances, angles, normal_vectors)
+
+    return jsonify((np.array(updated_space_points)/1000).reshape(9).tolist())
 
     

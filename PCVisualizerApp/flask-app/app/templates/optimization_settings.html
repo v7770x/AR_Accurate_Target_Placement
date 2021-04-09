@@ -1,28 +1,29 @@
 {% extends "base.html" %} {% block content %}
-<div class="container-fluid">
-    <h1>Optimization Settings</h1>
-
+<div class="container">
+    <div class="row">
+        <h1>Optimization Settings</h1>
+    <div>
 </div>
 <div class="container">
     <div class = "row">
-        <div class="row">
-            <form class="form-inline">
-                <h4>Current Optimization Method: {{optimization_functions[optimization_index]}}  </h4>
-                <div class="form-group">
-                    <label>Optimization Method:</label><br>
-                    <select id="optimization-method-select" class="form-select" aria-label="Default select example">
-                    </select>
-                </div>
-            </form>         
-        </div>
-        <div class="row">
-            <form class="form-inline" id="p1">
-                <div class="form-group">
-                    <label for="tolerance"> Tolerance (mm)</label><br>
-                    <input type="text" id="tolerance" name="tolerance" value="{{tolerance_mm}}"><br>
-                </div>
-            </form>   
-        </div>
+        
+        <form class="form-inline">
+            <h4>Current Optimization Method: {{optimization_functions[optimization_index]}}  </h4>
+            <div class="form-group">
+                <label>Optimization Method:</label><br>
+                <select id="optimization-method-select" class="form-select" aria-label="Default select example">
+                </select>
+            </div>
+        </form>         
+    
+    
+        <form class="form-inline" id="p1">
+            <div class="form-group">
+                <label for="tolerance"> Tolerance (mm)</label><br>
+                <input type="text" id="tolerance" name="tolerance" value="{{tolerance_mm}}"><br>
+            </div>
+        </form>   
+    
         <button id="update-optimization-settings-button" type="submit" class="btn btn-primary">
             Update Optimization Settings
         </button>
