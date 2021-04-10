@@ -6,11 +6,17 @@ import csv
 import numpy as np
 DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),"test_data") 
 
+def get_dist_ang_array(dists, angs):
+    return [np.concatenate( (np.array(dists), np.array(angs)*180/np.pi) )]
 
-def save_optimization_data(model_points, detected_points, distances, angles, normal_vectors):
+def save_optimization_data(model_points, detected_points, model_distances, model_angles, distances, angles, normal_vectors, 
+                            updated_points, updated_distances, updated_angles, orginal_ratio, updated_ratio):
     dt_string = datetime.now().strftime("%d/%m/%Y %H:%M:%S") 
     n = len(get_optimization_data())
-    pd_dict = {'0_Index': n+1,'1_Timestamp': [dt_string], '2_Model_Points': [model_points], '3_Detected_Points':[detected_points], '4_Distances':[distances], '5_Angles':[np.array(angles)*180/np.pi], '6_Normal_Vectors':[normal_vectors] }
+    pd_dict = {'aa_Index': n+1,'ab_Timestamp': [dt_string], 'ba_Model_Points': [model_points], 'bb_Detected_Points':[detected_points], 
+                'bc_Updated_Points': [updated_points],'ca_Model_Distances': get_dist_ang_array(model_distances, model_angles),
+                'cb_Detected_Distances':get_dist_ang_array(distances, angles), 'cc_Updated_Distances': get_dist_ang_array(updated_distances, updated_angles),
+                'da_Original_Ratio': [orginal_ratio], 'db_Updated_Ratio':[updated_ratio], 'ea_Normal_Vectors':[normal_vectors],}
     df = pd.DataFrame(pd_dict)
     optimization_path = os.path.join(DATA_PATH, "optimization_data.csv")
     print("saving to", optimization_path)

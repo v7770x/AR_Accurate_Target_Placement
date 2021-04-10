@@ -158,9 +158,16 @@ def optimize():
                                         + "\n ****diff space points (new-old): " + str(np.subtract(np.array(updated_space_points), np.array(space_points)))\
                                         + "\n ****updated parameter ratios: " + str(np.divide(extract_target_vals(updated_space_points), extract_target_vals(model_points)))
 
+    original_ratio = np.divide(extract_target_vals(space_points), extract_target_vals(model_points))
+    updated_ratio = np.divide(extract_target_vals(updated_space_points), extract_target_vals(model_points))
+
     #extract angles and distances of points measured and log
     (distances, angles) = solver.extract_target_vals(space_points, True)
-    logger.save_optimization_data(model_points, space_points, distances, angles, normal_vectors)
+    (model_distances, model_angles) = solver.extract_target_vals(model_points, True)
+    (updated_distances, updated_angles) = solver.extract_target_vals(updated_space_points, True)
+    logger.save_optimization_data(model_points, space_points, model_distances, model_angles, distances, angles, 
+                                normal_vectors, updated_space_points, updated_distances, updated_angles,
+                                original_ratio, updated_ratio)
 
     return jsonify((np.array(updated_space_points)/1000).reshape(9).tolist())
 

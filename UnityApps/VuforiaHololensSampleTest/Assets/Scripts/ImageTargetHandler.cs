@@ -359,7 +359,7 @@ public class ImageTargetHandler : MonoBehaviour
     public GameObject createSphere(Vector3 position, string color)
     {
         GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        sphere.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
+        sphere.transform.localScale = new Vector3(0.013f, 0.013f, 0.013f);
         sphere.transform.position = position;
         MeshRenderer meshRenderer = sphere.GetComponent<MeshRenderer>();
         meshRenderer.material = Resources.Load<Material>(color);
