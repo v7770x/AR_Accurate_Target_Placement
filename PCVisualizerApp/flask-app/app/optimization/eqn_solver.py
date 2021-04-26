@@ -52,6 +52,7 @@ def extract_target_vals(points, get_separate_return_vals=False):
     #extract angles (TODO) scale to allow for any number of points and extract all angles
     target_vals.append(get_angle(points[0] - points[2], points[1] - points[2]))
     target_vals.append(get_angle(points[2] - points[1], points[0] - points[1]))
+    target_vals.append(get_angle(points[2] - points[1], points[0] - points[2]))
 
     if(get_separate_return_vals):
         return (target_vals[0:3], target_vals[3:])

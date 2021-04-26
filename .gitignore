@@ -7,6 +7,7 @@ Planning/*
 PCVisualizerApp/testApps/*
 Papers/*
 *.zip
+TestImages/Testing*
 
 UnityApps/*
 !UnityApps/VuforiaHololensSampleTest

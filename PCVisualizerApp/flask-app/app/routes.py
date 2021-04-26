@@ -4,7 +4,7 @@ import app.optimization.eqn_solver as solver
 from app.optimization.eqn_solver import extract_target_vals
 from app.optimization.optimization_methods import minimize_nelder_log_dist_ratios, extract_distances, \
                                                 minimize_nelder_abs_diff, minimize_BFGS_abs_diff, \
-                                                minimize_global_abs_diff
+                                                minimize_global_abs_diff, minimize_genetic_abs_diff
 import os
 import numpy as np
 import app.data_logger as logger
@@ -12,10 +12,11 @@ import app.data_logger as logger
 app.config["DEBUG"] = True
 CURR_PTH = os.path.dirname(os.path.abspath(__file__))
 OBJECTS_PTH = os.path.join(CURR_PTH, "static", "objects")
-optimization_functions = [minimize_nelder_log_dist_ratios, minimize_nelder_abs_diff, minimize_BFGS_abs_diff, minimize_global_abs_diff]
+optimization_functions = [minimize_nelder_log_dist_ratios, minimize_nelder_abs_diff, 
+                        minimize_BFGS_abs_diff, minimize_global_abs_diff, minimize_genetic_abs_diff]
 data = {"points":[[0,0,0], [0,0,0], [0,0,0]], "vectors":[[0,0,0], [0,0,0], [0,0,0]], \
         "curr_stl_name":"Table.stl", "curr_obj_name":"Table.obj", "optimization_index":1, \
-        "tolerance_mm": 5, "optimization_output_string":"No Optimization performed"}
+        "tolerance_mm": [5, 5, 5], "optimization_output_string":"No Optimization performed"}
 
 @app.route('/')
 @app.route('/index')
@@ -146,7 +147,9 @@ def optimize():
     
 
     #run optimization with Nelder-Mead function
-    updated_space_points =  func(space_points, model_points, data.get("tolerance_mm"))
+    updated_space_points =  func(space_points, model_points, np.array([[val]*3 for val in data.get("tolerance_mm")]).reshape(9), normal_vectors)
+    # for i in range(5):
+    #     updated_space_points =  func(updated_space_points, model_points, np.array([[val]*3 for val in data.get("tolerance_mm")]).reshape(9), normal_vectors)
     print("updated space: ", updated_space_points)
     print("updated space distances: ", extract_target_vals(updated_space_points) )
     print("diff space distances (new-old): ", np.subtract(np.array(updated_space_points), np.array(space_points)))
